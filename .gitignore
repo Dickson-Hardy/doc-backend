@@ -1,0 +1,17 @@
+node_modules
+dist
+.env
+.env.local
+.env.production
+*.log
+logs/
+backups/
+*.pem
+*.key
+*.cert
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

@@ -1,0 +1,12 @@
+{
+  "name": "mongodb-inspector",
+  "version": "1.0.0",
+  "description": "Inspect MongoDB database structure",
+  "main": "inspect-mongodb.js",
+  "scripts": {
+    "inspect": "node inspect-mongodb.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.21.0"
+  }
+}
