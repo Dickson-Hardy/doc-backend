@@ -18,7 +18,7 @@ export class RegistrationsService {
     private emailService: EmailService,
   ) {}
 
-  async create(createRegistrationDto: CreateRegistrationDto): Promise<Registration> {
+  async create(createRegistrationDto: CreateRegistrationDto, paymentReference?: string): Promise<Registration> {
     // Find member by email from MongoDB
     const member = await this.membersService.findByEmail(createRegistrationDto.email);
     
@@ -39,6 +39,7 @@ export class RegistrationsService {
       lateFee: pricing.lateFee,
       totalAmount: pricing.total,
       paymentStatus: 'pending',
+      paymentReference: paymentReference, // Save reference immediately
     });
 
     return this.registrationsRepository.save(registration);
@@ -72,9 +73,28 @@ export class RegistrationsService {
 
     const updatedRegistration = await this.registrationsRepository.save(registration);
 
-    // Send confirmation email with barcode if payment is successful
+    // PRIORITY: Send confirmation email immediately if payment is successful
     if (status === 'paid') {
+      // Send email synchronously (blocking) to ensure it's sent before response
+      await this.sendConfirmationEmailWithRetry(registration, reference);
+    }
+
+    return updatedRegistration;
+  }
+
+  private async sendConfirmationEmailWithRetry(
+    registration: Registration,
+    reference: string,
+    maxRetries: number = 3,
+  ): Promise<void> {
+    let attempt = 0;
+    let lastError: Error | null = null;
+
+    while (attempt < maxRetries) {
       try {
+        attempt++;
+        console.log(`[EMAIL] Attempt ${attempt}/${maxRetries} - Sending to ${registration.email}`);
+
         await this.emailService.sendRegistrationConfirmation(
           registration.email,
           {
@@ -87,26 +107,41 @@ export class RegistrationsService {
           },
         );
 
-        // Log successful email
+        // Success - log it
+        console.log(`[EMAIL] ✅ Successfully sent to ${registration.email}`);
         await this.emailLogRepository.save({
           recipientEmail: registration.email,
           subject: 'CMDA Conference 2026 - Registration Confirmed',
           status: 'sent',
           registrationId: registration.id,
         });
+
+        return; // Exit on success
       } catch (error) {
-        // Log failed email
-        await this.emailLogRepository.save({
-          recipientEmail: registration.email,
-          subject: 'CMDA Conference 2026 - Registration Confirmed',
-          status: 'failed',
-          errorMessage: error.message,
-          registrationId: registration.id,
-        });
+        lastError = error;
+        console.error(`[EMAIL] ❌ Attempt ${attempt} failed:`, error.message);
+
+        if (attempt < maxRetries) {
+          // Wait before retry (exponential backoff)
+          const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+          console.log(`[EMAIL] ⏳ Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
       }
     }
 
-    return updatedRegistration;
+    // All retries failed - log the failure
+    console.error(`[EMAIL] ❌ All ${maxRetries} attempts failed for ${registration.email}`);
+    await this.emailLogRepository.save({
+      recipientEmail: registration.email,
+      subject: 'CMDA Conference 2026 - Registration Confirmed',
+      status: 'failed',
+      errorMessage: lastError?.message || 'Unknown error after retries',
+      registrationId: registration.id,
+    });
+
+    // Don't throw error - we don't want to fail the payment verification
+    // Email can be resent manually from admin dashboard
   }
 
   async findAll(filters?: {
@@ -184,6 +219,28 @@ export class RegistrationsService {
     registration.verifiedAt = new Date();
 
     return this.registrationsRepository.save(registration);
+  }
+
+  async resendConfirmationEmail(registrationId: string): Promise<void> {
+    const registration = await this.registrationsRepository.findOne({
+      where: { id: registrationId },
+    });
+
+    if (!registration) {
+      throw new NotFoundException('Registration not found');
+    }
+
+    if (registration.paymentStatus !== 'paid') {
+      throw new NotFoundException('Cannot send email - payment not confirmed');
+    }
+
+    console.log(`[EMAIL] Manual resend requested for ${registration.email}`);
+    
+    // Use the retry logic
+    await this.sendConfirmationEmailWithRetry(
+      registration,
+      registration.paymentReference,
+    );
   }
 
   async getEmailLogs(registrationId?: string): Promise<EmailLog[]> {

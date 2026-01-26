@@ -12,6 +12,7 @@ import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { BackupModule } from './backup/backup.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { BackupModule } from './backup/backup.module';
       dbName: process.env.MONGODB_DATABASE || 'cmda_members',
     }),
     AuthModule,
+    SettingsModule,
     MembersModule,
     RegistrationsModule,
     PaymentModule,

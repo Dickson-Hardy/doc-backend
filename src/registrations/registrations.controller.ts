@@ -14,10 +14,14 @@ export class RegistrationsController {
   @Public()
   @Post()
   async create(@Body() createRegistrationDto: CreateRegistrationDto) {
-    const registration = await this.registrationsService.create(createRegistrationDto);
-    
-    // Generate payment reference
+    // Generate payment reference first
     const reference = `CMDA-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Create registration with reference
+    const registration = await this.registrationsService.create(
+      createRegistrationDto,
+      reference,
+    );
     
     return {
       registrationId: registration.id,

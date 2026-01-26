@@ -1,11 +1,15 @@
 import { Controller, Get, Post, Body, Query, Param } from '@nestjs/common';
 import { RegistrationsService } from '../registrations/registrations.service';
+import { PaymentService } from '../payment/payment.service';
 import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('admin')
 @Roles('admin', 'super_admin')
 export class AdminController {
-  constructor(private readonly registrationsService: RegistrationsService) {}
+  constructor(
+    private readonly registrationsService: RegistrationsService,
+    private readonly paymentService: PaymentService,
+  ) {}
 
   @Get('registrations')
   async getRegistrations(
@@ -37,11 +41,52 @@ export class AdminController {
 
   @Post('requery-payment')
   async requeryPayment(@Body('reference') reference: string) {
-    // This will trigger payment verification again
-    const registration = await this.registrationsService.findByPaymentReference(reference);
-    if (!registration) {
-      throw new Error('Registration not found');
+    try {
+      // Verify the registration exists
+      const registration = await this.registrationsService.findByPaymentReference(reference);
+      
+      if (!registration) {
+        return {
+          status: 'error',
+          message: 'Registration not found for this reference',
+        };
+      }
+
+      // If already paid, return success
+      if (registration.paymentStatus === 'paid') {
+        return {
+          status: 'success',
+          message: 'Payment already verified',
+          data: {
+            registrationId: registration.id,
+            paymentStatus: registration.paymentStatus,
+            paidAt: registration.paidAt,
+          },
+        };
+      }
+
+      // Trigger payment verification
+      const result = await this.paymentService.verifyPayment(reference);
+      
+      return {
+        status: 'success',
+        message: 'Payment verification completed',
+        data: result,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error.message || 'Failed to requery payment',
+      };
     }
-    return { message: 'Requery initiated', registrationId: registration.id };
+  }
+
+  @Post('resend-email/:registrationId')
+  async resendEmail(@Param('registrationId') registrationId: string) {
+    await this.registrationsService.resendConfirmationEmail(registrationId);
+    return { 
+      message: 'Email resent successfully',
+      registrationId 
+    };
   }
 }

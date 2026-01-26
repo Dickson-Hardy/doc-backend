@@ -10,11 +10,14 @@ export class EmailService {
   constructor(private configService: ConfigService) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get('SMTP_HOST'),
-      port: this.configService.get('SMTP_PORT'),
-      secure: true,
+      port: parseInt(this.configService.get('SMTP_PORT') || '587'),
+      secure: this.configService.get('SMTP_PORT') === '465', // true for 465, false for other ports
       auth: {
         user: this.configService.get('SMTP_USER'),
         pass: this.configService.get('SMTP_PASS'),
+      },
+      tls: {
+        rejectUnauthorized: false, // Allow self-signed certificates
       },
     });
   }
@@ -106,7 +109,7 @@ export class EmailService {
             </div>
 
             <p>We look forward to seeing you at the conference!</p>
-            <p>For any inquiries, please contact us at <a href="mailto:info@cmda.org">info@cmda.org</a></p>
+            <p>For any inquiries, please contact us at <a href="mailto:conference@cmdanigeria.org">conference@cmdanigeria.org</a></p>
           </div>
           <div class="footer">
             <p>© 2026 Christian Medical & Dental Association of Nigeria</p>
@@ -118,10 +121,16 @@ export class EmailService {
     `;
 
     await this.transporter.sendMail({
-      from: `"CMDA Conference" <${this.configService.get('SMTP_USER')}>`,
+      from: this.configService.get('EMAIL_FROM') || `"CMDA Conference" <${this.configService.get('SMTP_USER')}>`,
       to: email,
       subject: '✅ CMDA Conference 2026 - Registration Confirmed',
       html: htmlContent,
+      priority: 'high', // Mark as high priority
+      headers: {
+        'X-Priority': '1', // Highest priority
+        'X-MSMail-Priority': 'High',
+        'Importance': 'high',
+      },
       attachments: [
         {
           filename: 'conference-pass.png',

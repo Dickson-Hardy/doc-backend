@@ -1,46 +1,73 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import * as crypto from 'crypto';
 import { RegistrationsService } from '../registrations/registrations.service';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class PaymentService {
-  private readonly paystackSecretKey: string;
   private readonly paystackBaseUrl = 'https://api.paystack.co';
 
   constructor(
     private configService: ConfigService,
     private registrationsService: RegistrationsService,
-  ) {
-    this.paystackSecretKey = this.configService.get<string>('PAYSTACK_SECRET_KEY');
+    private settingsService: SettingsService,
+  ) {}
+
+  private async getPaystackSecretKey(): Promise<string> {
+    // Try to get from database first, fallback to env
+    const dbKey = await this.settingsService.getPaystackSecretKey();
+    return dbKey || this.configService.get<string>('PAYSTACK_SECRET_KEY');
+  }
+
+  async verifyWebhookSignature(payload: string, signature: string): Promise<boolean> {
+    const secretKey = await this.getPaystackSecretKey();
+    const hash = crypto
+      .createHmac('sha512', secretKey)
+      .update(payload)
+      .digest('hex');
+    return hash === signature;
   }
 
   async verifyPayment(reference: string) {
     try {
+      console.log(`[PAYMENT] Verifying payment for reference: ${reference}`);
+      
+      const secretKey = await this.getPaystackSecretKey();
+      
       const response = await axios.get(
         `${this.paystackBaseUrl}/transaction/verify/${reference}`,
         {
           headers: {
-            Authorization: `Bearer ${this.paystackSecretKey}`,
+            Authorization: `Bearer ${secretKey}`,
           },
         },
       );
 
       const { data } = response.data;
+      console.log(`[PAYMENT] Paystack response status: ${data.status}`);
 
       if (data.status === 'success') {
         // Find registration by reference
         const registration = await this.registrationsService.findByPaymentReference(reference);
         
-        if (registration) {
-          // Update payment status
-          await this.registrationsService.updatePaymentStatus(
-            registration.id,
-            'paid',
-            reference,
-            new Date(),
-          );
+        if (!registration) {
+          console.error(`[PAYMENT] ❌ Registration not found for reference: ${reference}`);
+          throw new BadRequestException(`Registration not found for reference: ${reference}`);
         }
+
+        console.log(`[PAYMENT] ✅ Found registration: ${registration.id}`);
+        
+        // Update payment status
+        await this.registrationsService.updatePaymentStatus(
+          registration.id,
+          'paid',
+          reference,
+          new Date(data.paid_at),
+        );
+
+        console.log(`[PAYMENT] ✅ Payment verified and registration updated`);
 
         return {
           status: 'success',
@@ -52,13 +79,16 @@ export class PaymentService {
           },
         };
       } else {
-        throw new BadRequestException('Payment verification failed');
+        console.error(`[PAYMENT] ❌ Payment status is not success: ${data.status}`);
+        throw new BadRequestException(`Payment status: ${data.status}`);
       }
     } catch (error) {
+      console.error(`[PAYMENT] ❌ Error verifying payment:`, error.message);
+      
       if (axios.isAxiosError(error)) {
-        throw new BadRequestException(
-          error.response?.data?.message || 'Payment verification failed',
-        );
+        const errorMessage = error.response?.data?.message || 'Payment verification failed';
+        console.error(`[PAYMENT] Paystack error:`, errorMessage);
+        throw new BadRequestException(errorMessage);
       }
       throw error;
     }
@@ -66,17 +96,27 @@ export class PaymentService {
 
   async initializePayment(email: string, amount: number, reference: string) {
     try {
+      const secretKey = await this.getPaystackSecretKey();
+      const splitCode = await this.settingsService.getPaystackSplitCode();
+
+      const payload: any = {
+        email,
+        amount: amount * 100, // Convert to kobo
+        reference,
+        callback_url: `${this.configService.get('FRONTEND_URL')}/payment/callback`,
+      };
+
+      // Add split code if available for revenue sharing
+      if (splitCode) {
+        payload.split_code = splitCode;
+      }
+
       const response = await axios.post(
         `${this.paystackBaseUrl}/transaction/initialize`,
-        {
-          email,
-          amount: amount * 100, // Convert to kobo
-          reference,
-          callback_url: `${this.configService.get('FRONTEND_URL')}/payment/callback`,
-        },
+        payload,
         {
           headers: {
-            Authorization: `Bearer ${this.paystackSecretKey}`,
+            Authorization: `Bearer ${secretKey}`,
             'Content-Type': 'application/json',
           },
         },
