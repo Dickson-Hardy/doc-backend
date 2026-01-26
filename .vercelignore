@@ -1,0 +1,9 @@
+node_modules
+.env
+.env.local
+.git
+*.log
+src
+test
+coverage
+.vscode
