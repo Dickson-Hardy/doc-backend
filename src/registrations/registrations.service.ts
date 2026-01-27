@@ -27,10 +27,7 @@ export class RegistrationsService {
     }
 
     // Calculate pricing
-    const pricing = this.calculatePricing(
-      createRegistrationDto.category,
-      createRegistrationDto.yearsInPractice,
-    );
+    const pricing = this.calculatePricing(createRegistrationDto.category);
 
     const registration = this.registrationsRepository.create({
       ...createRegistrationDto,
@@ -48,6 +45,12 @@ export class RegistrationsService {
   async findByPaymentReference(reference: string): Promise<Registration | null> {
     return this.registrationsRepository.findOne({
       where: { paymentReference: reference },
+    });
+  }
+
+  async findById(id: string): Promise<Registration | null> {
+    return this.registrationsRepository.findOne({
+      where: { id },
     });
   }
 
@@ -256,13 +259,12 @@ export class RegistrationsService {
     });
   }
 
-  private calculatePricing(category: string, yearsInPractice?: string) {
+  private calculatePricing(category: string) {
     const EARLY_REGISTRATION_DEADLINE = new Date('2026-04-30T23:59:59');
     const LATE_FEE = 10000;
     const BASE_FEES = {
       student: 11000,
-      'junior-doctor': 30000,
-      'senior-doctor': 50000,
+      doctor: 40000,
       'doctor-with-spouse': 85000,
     };
 
@@ -274,9 +276,7 @@ export class RegistrationsService {
         baseFee = BASE_FEES.student;
         break;
       case 'doctor':
-        baseFee = yearsInPractice === 'less-than-5' 
-          ? BASE_FEES['junior-doctor'] 
-          : BASE_FEES['senior-doctor'];
+        baseFee = BASE_FEES.doctor;
         break;
       case 'doctor-with-spouse':
         baseFee = BASE_FEES['doctor-with-spouse'];

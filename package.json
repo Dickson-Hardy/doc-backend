@@ -12,6 +12,7 @@
     "seed": "ts-node src/database/seed.ts",
     "seed:admin": "ts-node src/database/seed-admin.ts",
     "test:email": "ts-node src/email/test-email.ts",
+    "test:sendgrid": "ts-node src/test-sendgrid.ts",
     "test:api": "ts-node src/test-registration-api.ts",
     "db:view": "ts-node src/database/view-registrations.ts",
     "db:clean": "ts-node src/database/clean-test-data.ts",

@@ -32,9 +32,6 @@ export class Registration {
   @Column()
   chapter: string;
 
-  @Column()
-  isCmdaMember: boolean;
-
   @Column({ nullable: true })
   currentLeadershipPost: string;
 
@@ -46,9 +43,6 @@ export class Registration {
 
   @Column({ nullable: true })
   chapterOfGraduation: string;
-
-  @Column({ nullable: true })
-  yearsInPractice: string;
 
   // Spouse details (for doctor-with-spouse category)
   @Column({ nullable: true })
@@ -67,8 +61,21 @@ export class Registration {
   @Column({ type: 'date' })
   dateOfArrival: Date;
 
-  @Column()
-  accommodationOption: string;
+  // Accommodation Details
+  @Column({ nullable: true })
+  accommodationType: string;
+
+  @Column({ nullable: true })
+  covenantRoomType: string;
+
+  @Column({ nullable: true })
+  temperanceRoomType: string;
+
+  @Column({ nullable: true })
+  roomSharing: string;
+
+  @Column({ nullable: true })
+  roommateName: string;
 
   // Abstract submission
   @Column({ default: false })

@@ -49,8 +49,25 @@ export class PaymentService {
       console.log(`[PAYMENT] Paystack response status: ${data.status}`);
 
       if (data.status === 'success') {
-        // Find registration by reference
-        const registration = await this.registrationsService.findByPaymentReference(reference);
+        // Try to find registration by reference first
+        let registration = await this.registrationsService.findByPaymentReference(reference);
+        
+        // If not found by Paystack reference, try to find by registration ID from metadata
+        if (!registration && data.metadata?.custom_fields) {
+          const registrationIdField = data.metadata.custom_fields.find(
+            (field: any) => field.variable_name === 'registration_id'
+          );
+          
+          if (registrationIdField) {
+            const registrationId = registrationIdField.value;
+            console.log(`[PAYMENT] Looking up by registration ID from metadata: ${registrationId}`);
+            registration = await this.registrationsService.findById(registrationId);
+            
+            if (registration) {
+              console.log(`[PAYMENT] ✅ Found registration by ID, updating with Paystack reference: ${reference}`);
+            }
+          }
+        }
         
         if (!registration) {
           console.error(`[PAYMENT] ❌ Registration not found for reference: ${reference}`);
@@ -59,11 +76,11 @@ export class PaymentService {
 
         console.log(`[PAYMENT] ✅ Found registration: ${registration.id}`);
         
-        // Update payment status
+        // Update payment status with the actual Paystack reference
         await this.registrationsService.updatePaymentStatus(
           registration.id,
           'paid',
-          reference,
+          reference, // Use the actual Paystack reference
           new Date(data.paid_at),
         );
 

@@ -28,9 +28,6 @@ export class CreateRegistrationDto {
   @IsString()
   chapter: string;
 
-  @IsBoolean()
-  isCmdaMember: boolean;
-
   @IsOptional()
   @IsString()
   currentLeadershipPost?: string;
@@ -45,10 +42,6 @@ export class CreateRegistrationDto {
   @IsOptional()
   @IsString()
   chapterOfGraduation?: string;
-
-  @IsOptional()
-  @IsEnum(['less-than-5', '5-and-above'])
-  yearsInPractice?: string;
 
   // Spouse details
   @IsOptional()
@@ -71,8 +64,26 @@ export class CreateRegistrationDto {
   @IsDateString()
   dateOfArrival: string;
 
-  @IsEnum(['on-campus', 'off-campus', 'no-accommodation'])
-  accommodationOption: string;
+  // Accommodation Details
+  @IsOptional()
+  @IsEnum(['covenant-guest-house', 'pg-hostel', 'camp-a', 'temperance', 'student-free'])
+  accommodationType?: string;
+
+  @IsOptional()
+  @IsEnum(['standard', 'elite', 'mini-suite'])
+  covenantRoomType?: string;
+
+  @IsOptional()
+  @IsEnum(['executive-chalet', 'sapphire'])
+  temperanceRoomType?: string;
+
+  @IsOptional()
+  @IsEnum(['shared', 'private'])
+  roomSharing?: string;
+
+  @IsOptional()
+  @IsString()
+  roommateName?: string;
 
   // Abstract
   @IsBoolean()
