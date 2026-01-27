@@ -16,9 +16,18 @@ async function bootstrapServer(): Promise<Handler> {
       new ExpressAdapter(expressApp),
     );
 
+    // Parse CORS origins from environment variable
+    const corsOrigins = process.env.CORS_ORIGINS 
+      ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+      : ['http://localhost:5173', 'http://localhost:8080'];
+
     nestApp.enableCors({
-      origin: '*',
+      origin: corsOrigins,
       credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+      preflightContinue: false,
+      optionsSuccessStatus: 200
     });
 
     nestApp.useGlobalPipes(
