@@ -3,6 +3,7 @@ services:
     name: cmda-conference-api
     env: node
     plan: free
+    rootDir: backend
     buildCommand: pnpm install --frozen-lockfile && pnpm run build
     startCommand: node dist/main.js
     envVars:
