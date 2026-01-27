@@ -4,10 +4,12 @@ services:
     env: node
     plan: free
     buildCommand: pnpm install --frozen-lockfile && pnpm run build
-    startCommand: pnpm run start:prod
+    startCommand: node dist/main.js
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
       - key: CORS_ORIGINS
         value: https://dnconference.cmdanigeria.net,https://www.dnconference.cmdanigeria.net
       - key: DATABASE_URL
