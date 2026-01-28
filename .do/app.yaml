@@ -1,0 +1,37 @@
+name: cmda-conference-api
+region: nyc
+
+services:
+  - name: api
+    github:
+      repo: Dickson-Hardy/doc-backend
+      branch: master
+      deploy_on_push: true
+    source_dir: /backend
+    build_command: pnpm install --frozen-lockfile && pnpm run build
+    run_command: node dist/main.js
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8080
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGINS
+        value: https://dnconference.cmdanigeria.net,https://www.dnconference.cmdanigeria.net
+      - key: DATABASE_URL
+        type: SECRET
+      - key: MONGODB_URI
+        type: SECRET
+      - key: PAYSTACK_SECRET_KEY
+        type: SECRET
+      - key: PAYSTACK_PUBLIC_KEY
+        type: SECRET
+      - key: SMTP_PASS
+        type: SECRET
+      - key: JWT_SECRET
+        type: SECRET
+      - key: ENCRYPTION_KEY
+        type: SECRET
+    routes:
+      - path: /
