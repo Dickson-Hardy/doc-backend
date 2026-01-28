@@ -1,6 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import * as crypto from 'crypto';
+
+// Make crypto globally available for @nestjs/schedule
+if (!global.crypto) {
+  (global as any).crypto = crypto;
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
