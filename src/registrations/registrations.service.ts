@@ -19,6 +19,18 @@ export class RegistrationsService {
   ) {}
 
   async create(createRegistrationDto: CreateRegistrationDto, paymentReference?: string): Promise<Registration> {
+    // Check for existing registration with same email
+    const existingRegistration = await this.registrationsRepository.findOne({
+      where: { 
+        email: createRegistrationDto.email,
+        paymentStatus: 'paid' // Only block if they have a paid registration
+      },
+    });
+
+    if (existingRegistration) {
+      throw new Error('You have already registered for this conference. Please check your email for confirmation details.');
+    }
+
     // Find member by email from MongoDB
     const member = await this.membersService.findByEmail(createRegistrationDto.email);
     
@@ -46,6 +58,36 @@ export class RegistrationsService {
     return this.registrationsRepository.findOne({
       where: { paymentReference: reference },
     });
+  }
+
+  async findByEmail(email: string): Promise<Registration | null> {
+    return this.registrationsRepository.findOne({
+      where: { email },
+      order: { createdAt: 'DESC' }, // Get most recent registration
+    });
+  }
+
+  async checkExistingRegistration(email: string): Promise<{
+    exists: boolean;
+    status?: string;
+    registrationId?: string;
+    paymentReference?: string;
+  }> {
+    const registration = await this.registrationsRepository.findOne({
+      where: { email },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!registration) {
+      return { exists: false };
+    }
+
+    return {
+      exists: true,
+      status: registration.paymentStatus,
+      registrationId: registration.id,
+      paymentReference: registration.paymentReference,
+    };
   }
 
   async findById(id: string): Promise<Registration | null> {
@@ -264,7 +306,8 @@ export class RegistrationsService {
     const LATE_FEE = 10000;
     const BASE_FEES = {
       student: 11000,
-      doctor: 40000,
+      'junior-doctor': 30000,
+      'senior-doctor': 50000,
       'doctor-with-spouse': 85000,
     };
 
@@ -275,12 +318,17 @@ export class RegistrationsService {
       case 'student':
         baseFee = BASE_FEES.student;
         break;
-      case 'doctor':
-        baseFee = BASE_FEES.doctor;
+      case 'junior-doctor':
+        baseFee = BASE_FEES['junior-doctor'];
+        break;
+      case 'senior-doctor':
+        baseFee = BASE_FEES['senior-doctor'];
         break;
       case 'doctor-with-spouse':
         baseFee = BASE_FEES['doctor-with-spouse'];
         break;
+      default:
+        baseFee = BASE_FEES['junior-doctor']; // Default fallback
     }
 
     const lateFee = isLateRegistration ? LATE_FEE : 0;

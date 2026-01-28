@@ -31,6 +31,13 @@ export class RegistrationsController {
   }
 
   @Public()
+  @Get('check/:email')
+  async checkRegistration(@Param('email') email: string) {
+    const result = await this.registrationsService.checkExistingRegistration(email);
+    return result;
+  }
+
+  @Public()
   @Get('verify-payment/:reference')
   async verifyPayment(@Param('reference') reference: string) {
     const result = await this.paymentService.verifyPayment(reference);
