@@ -143,4 +143,13 @@ export class SettingsService {
       );
     }
   }
+
+  async updatePaystackSplitCode(splitCode: string): Promise<void> {
+    await this.setSetting(
+      'paystack_split_code',
+      splitCode,
+      'Paystack Split Code for revenue sharing',
+      false,
+    );
+  }
 }
