@@ -26,7 +26,15 @@ export class AdminController {
 
   @Get('stats')
   async getStats() {
-    return this.registrationsService.getStats();
+    const stats = await this.registrationsService.getStats();
+    
+    // Get count of payments that used split code
+    const splitPayments = await this.registrationsService.getSplitPaymentCount();
+    
+    return {
+      ...stats,
+      splitPayments,
+    };
   }
 
   @Get('email-logs')

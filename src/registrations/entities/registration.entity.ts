@@ -106,6 +106,9 @@ export class Registration {
   @Column({ nullable: true, type: 'timestamp' })
   paidAt: Date;
 
+  @Column({ nullable: true })
+  splitCode: string; // Paystack split code used for this payment
+
   // Attendance verification
   @Column({ default: false })
   attendanceVerified: boolean;

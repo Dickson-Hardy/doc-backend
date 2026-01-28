@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import { Registration } from './entities/registration.entity';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { MembersService } from '../members/members.service';
@@ -101,6 +101,7 @@ export class RegistrationsService {
     status: string,
     reference: string,
     paidAt?: Date,
+    splitCode?: string,
   ): Promise<Registration> {
     const registration = await this.registrationsRepository.findOne({
       where: { id: registrationId },
@@ -114,6 +115,9 @@ export class RegistrationsService {
     registration.paymentReference = reference;
     if (paidAt) {
       registration.paidAt = paidAt;
+    }
+    if (splitCode) {
+      registration.splitCode = splitCode;
     }
 
     const updatedRegistration = await this.registrationsRepository.save(registration);
@@ -245,6 +249,15 @@ export class RegistrationsService {
       abandoned,
       revenue: totalRevenue?.total || 0,
     };
+  }
+
+  async getSplitPaymentCount(): Promise<number> {
+    return this.registrationsRepository.count({
+      where: { 
+        paymentStatus: 'paid',
+        splitCode: Not(null) as any,
+      },
+    });
   }
 
   async verifyAttendance(registrationId: string): Promise<Registration> {

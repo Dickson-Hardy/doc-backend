@@ -76,12 +76,16 @@ export class PaymentService {
 
         console.log(`[PAYMENT] ✅ Found registration: ${registration.id}`);
         
+        // Get the split code that was used (if any)
+        const splitCode = data.split?.split_code || null;
+        
         // Update payment status with the actual Paystack reference
         await this.registrationsService.updatePaymentStatus(
           registration.id,
           'paid',
           reference, // Use the actual Paystack reference
           new Date(data.paid_at),
+          splitCode, // Store the split code used
         );
 
         console.log(`[PAYMENT] ✅ Payment verified and registration updated`);
