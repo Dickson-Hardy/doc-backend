@@ -62,6 +62,9 @@ export class Member {
   specialty?: string;
 
   @Prop()
+  yearsOfExperience?: string; // '0 - 5 Years' or '5 Years and Above'
+
+  @Prop()
   avatarUrl?: string;
 
   @Prop()

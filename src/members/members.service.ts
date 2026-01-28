@@ -13,18 +13,24 @@ export class MembersService {
   /**
    * Map MongoDB role to conference registration category
    */
-  private mapRoleToCategory(role: string, yearsInPractice?: number): string {
+  private mapRoleToCategory(role: string, yearsOfExperience?: string): string {
     switch (role) {
       case 'Student':
         return 'student';
       case 'Doctor':
-        // Determine if doctor has 5+ years in practice
-        // For now, we'll default to 'doctor' and let them select with spouse option
-        return 'doctor';
       case 'GlobalNetwork':
-        return 'doctor'; // Global network members are doctors
+        // Check years of experience to determine junior vs senior
+        if (yearsOfExperience) {
+          if (yearsOfExperience === '0 - 5 Years') {
+            return 'junior-doctor';
+          } else if (yearsOfExperience === '5 Years and Above') {
+            return 'senior-doctor';
+          }
+        }
+        // Default to junior-doctor if no experience data
+        return 'junior-doctor';
       default:
-        return 'doctor';
+        return 'junior-doctor';
     }
   }
 
@@ -79,7 +85,7 @@ export class MembersService {
       previousLeadershipPost: '',
       
       // Category & Professional Details
-      category: this.mapRoleToCategory(member.role),
+      category: this.mapRoleToCategory(member.role, member.yearsOfExperience),
       chapterOfGraduation: member.region, // Use region as chapter of graduation
       yearsInPractice: this.calculateYearsInPractice(member),
       
