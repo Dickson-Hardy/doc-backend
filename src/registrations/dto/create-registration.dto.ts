@@ -36,7 +36,7 @@ export class CreateRegistrationDto {
   @IsString()
   previousLeadershipPost?: string;
 
-  @IsEnum(['student', 'doctor', 'doctor-with-spouse'])
+  @IsEnum(['student', 'junior-doctor', 'senior-doctor', 'doctor-with-spouse'])
   category: string;
 
   @IsOptional()
