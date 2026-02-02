@@ -1,5 +1,6 @@
 import { IsEmail, IsString, IsNumber, IsBoolean, IsEnum, IsOptional, IsDateString, Min, Max } from 'class-validator';
 
+// Updated to support all 4 category types
 export class CreateRegistrationDto {
   @IsEmail()
   email: string;
