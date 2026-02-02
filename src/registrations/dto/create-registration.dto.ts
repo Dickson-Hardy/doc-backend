@@ -67,7 +67,7 @@ export class CreateRegistrationDto {
 
   // Accommodation Details
   @IsOptional()
-  @IsEnum(['covenant-guest-house', 'pg-hostel', 'camp-a', 'temperance', 'student-free'])
+  @IsEnum(['covenant-guest-house', 'pg-hostel', 'camp-a', 'temperance', 'student-free', 'no-accommodation'])
   accommodationType?: string;
 
   @IsOptional()
