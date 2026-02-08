@@ -31,6 +31,16 @@ export class RegistrationsController {
   }
 
   @Public()
+  @Get(':id')
+  async getById(@Param('id') id: string) {
+    const registration = await this.registrationsService.findById(id);
+    if (!registration) {
+      throw new Error('Registration not found');
+    }
+    return registration;
+  }
+
+  @Public()
   @Get('check/:email')
   async checkRegistration(@Param('email') email: string) {
     const result = await this.registrationsService.checkExistingRegistration(email);

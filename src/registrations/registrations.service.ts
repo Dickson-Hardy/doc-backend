@@ -19,16 +19,30 @@ export class RegistrationsService {
   ) {}
 
   async create(createRegistrationDto: CreateRegistrationDto, paymentReference?: string): Promise<Registration> {
-    // Check for existing registration with same email
-    const existingRegistration = await this.registrationsRepository.findOne({
+    // Check for existing PAID registration with same email
+    const existingPaidRegistration = await this.registrationsRepository.findOne({
       where: { 
         email: createRegistrationDto.email,
-        paymentStatus: 'paid' // Only block if they have a paid registration
+        paymentStatus: 'paid'
       },
     });
 
-    if (existingRegistration) {
+    if (existingPaidRegistration) {
       throw new Error('You have already registered for this conference. Please check your email for confirmation details.');
+    }
+
+    // Check for existing PENDING registration with same email
+    const existingPendingRegistration = await this.registrationsRepository.findOne({
+      where: { 
+        email: createRegistrationDto.email,
+        paymentStatus: 'pending'
+      },
+      order: { createdAt: 'DESC' }, // Get most recent
+    });
+
+    if (existingPendingRegistration) {
+      // Log warning but allow (user might want to change details)
+      console.log(`[REGISTRATION] User ${createRegistrationDto.email} has pending registration ${existingPendingRegistration.id}, creating new one`);
     }
 
     // Find member by email from MongoDB
