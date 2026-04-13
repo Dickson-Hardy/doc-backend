@@ -115,17 +115,27 @@ export class PaymentService {
     }
   }
 
-  async initializePayment(email: string, amount: number, reference: string) {
+  async initializePayment(
+    email: string,
+    amount: number,
+    reference: string,
+    metadata?: Record<string, any>,
+  ) {
     try {
       const secretKey = await this.getPaystackSecretKey();
-      const splitCode = await this.settingsService.getPaystackSplitCode();
+      const splitCode = (await this.settingsService.getPaystackSplitCode())?.trim();
+      const frontendUrl = this.configService.get('FRONTEND_URL') || 'http://localhost:5173';
 
       const payload: any = {
         email,
         amount: amount * 100, // Convert to kobo
         reference,
-        callback_url: `${this.configService.get('FRONTEND_URL')}/payment/callback`,
+        callback_url: `${frontendUrl}/payment/callback`,
       };
+
+      if (metadata) {
+        payload.metadata = metadata;
+      }
 
       // Add split code if available for revenue sharing
       if (splitCode) {

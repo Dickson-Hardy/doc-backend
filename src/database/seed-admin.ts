@@ -27,10 +27,8 @@ async function bootstrap() {
     );
     console.log('✅ Scanner user created:', scanner.email);
 
-    console.log('\n📝 Login Credentials:');
-    console.log('Admin: admin@cmda.org / Admin@2026!');
-    console.log('Scanner: scanner@cmda.org / Scanner@2026!');
-    console.log('\n⚠️  Please change these passwords after first login!');
+    console.log('\n✅ Admin users seeded successfully');
+    console.log('⚠️  Please change default passwords after first login!');
   } catch (error) {
     console.error('Error creating admin users:', error.message);
   }

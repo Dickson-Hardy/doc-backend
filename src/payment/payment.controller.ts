@@ -1,4 +1,14 @@
-import { Controller, Post, Body, Get, Query, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Query,
+  Req,
+  HttpCode,
+  HttpStatus,
+  BadRequestException,
+} from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { Public } from '../auth/decorators/public.decorator';
 import { Request } from 'express';
@@ -6,6 +16,28 @@ import { Request } from 'express';
 @Controller('payment')
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
+
+  @Post('initialize')
+  @Public()
+  async initializePayment(
+    @Body('email') email: string,
+    @Body('amount') amount: number,
+    @Body('reference') reference: string,
+    @Body('metadata') metadata?: Record<string, any>,
+  ) {
+    const numericAmount = Number(amount);
+
+    if (!email || !reference || !Number.isFinite(numericAmount) || numericAmount <= 0) {
+      throw new BadRequestException('email, amount and reference are required');
+    }
+
+    return this.paymentService.initializePayment(
+      email,
+      numericAmount,
+      reference,
+      metadata,
+    );
+  }
 
   @Post('verify')
   @Public()
