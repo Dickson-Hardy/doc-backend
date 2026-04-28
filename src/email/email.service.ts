@@ -161,11 +161,22 @@ export class EmailService implements OnModuleInit {
       </html>
     `;
 
+    const textContent = `CMDA National Conference 2026\n\n` +
+      `Dear ${registrationData.firstName} ${registrationData.surname},\n\n` +
+      `Your registration is confirmed.\n` +
+      `Registration ID: ${registrationData.id}\n` +
+      `Category: ${registrationData.category}\n` +
+      `Amount Paid: ₦${registrationData.totalAmount.toLocaleString()}\n` +
+      `Payment Reference: ${registrationData.paymentReference}\n\n` +
+      `Your QR code is attached as conference-pass.png.\n` +
+      `Please present it at check-in.\n`;
+
     const mailOptions = {
       from: this.configService.get('EMAIL_FROM') || `"CMDA Conference" <${this.configService.get('SMTP_USER')}>`,
       to: email,
       subject: '✅ CMDA Conference 2026 - Registration Confirmed',
       html: htmlContent,
+      text: textContent,
       priority: 'high' as const, // Mark as high priority
       headers: {
         'X-Priority': '1', // Highest priority
@@ -176,7 +187,9 @@ export class EmailService implements OnModuleInit {
         {
           filename: 'conference-pass.png',
           content: qrCodeBuffer,
+          contentType: 'image/png',
           cid: 'qrcode',
+          contentDisposition: 'inline',
         },
       ],
     };
