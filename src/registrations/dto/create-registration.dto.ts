@@ -31,6 +31,10 @@ export class CreateRegistrationDto {
 
   @IsOptional()
   @IsString()
+  state?: string;
+
+  @IsOptional()
+  @IsString()
   currentLeadershipPost?: string;
 
   @IsOptional()

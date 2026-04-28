@@ -80,6 +80,7 @@ export class MembersService {
       
       // CMDA Information
       chapter: member.region, // region is the chapter
+      state: member.region,
       isCmdaMember: true, // All users in this DB are members
       currentLeadershipPost: '',
       previousLeadershipPost: '',

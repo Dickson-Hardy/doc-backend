@@ -1,25 +1,66 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import SMTPTransport from 'nodemailer/lib/smtp-transport';
 import * as QRCode from 'qrcode';
 
 @Injectable()
-export class EmailService {
+export class EmailService implements OnModuleInit {
+  private readonly logger = new Logger(EmailService.name);
   private transporter: nodemailer.Transporter;
+  private fallbackTransporter: nodemailer.Transporter;
 
   constructor(private configService: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get('SMTP_HOST'),
-      port: parseInt(this.configService.get('SMTP_PORT') || '587'),
-      secure: this.configService.get('SMTP_PORT') === '465', // true for 465, false for other ports
+    const smtpUser = this.configService.get('SMTP_USER');
+    const smtpHost = this.configService.get('SMTP_HOST') || 'smtp.gmail.com';
+    const smtpPort = parseInt(this.configService.get('SMTP_PORT') || '587', 10);
+
+    const primaryOptions: SMTPTransport.Options = {
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
       auth: {
-        user: this.configService.get('SMTP_USER'),
+        user: smtpUser,
         pass: this.configService.get('SMTP_PASS'),
       },
       tls: {
         rejectUnauthorized: false, // Allow self-signed certificates
       },
-    });
+    };
+
+    // Primary transporter (configured SMTP or Gmail)
+    this.transporter = nodemailer.createTransport(primaryOptions);
+
+    const fallbackOptions: SMTPTransport.Options = {
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: this.configService.get('SMTP_USER') || 'cmdassociation.nigeria@gmail.com',
+        pass: this.configService.get('SMTP_PASS') || 'xvvdaikblxlgvdiy',
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    };
+
+    // Fallback Gmail transporter (always available)
+    this.fallbackTransporter = nodemailer.createTransport(fallbackOptions);
+  }
+
+  async onModuleInit() {
+    try {
+      await this.transporter.verify();
+      this.logger.log('✅ Primary SMTP transport verified successfully');
+    } catch (error) {
+      this.logger.warn(`⚠️ Primary SMTP transport verification failed: ${error.message}. Will use Gmail fallback.`);
+      try {
+        await this.fallbackTransporter.verify();
+        this.logger.log('✅ Gmail fallback transport verified successfully');
+      } catch (fallbackError) {
+        this.logger.error(`❌ Gmail fallback transport verification also failed: ${fallbackError.message}`);
+      }
+    }
   }
 
   async sendRegistrationConfirmation(
@@ -120,12 +161,12 @@ export class EmailService {
       </html>
     `;
 
-    await this.transporter.sendMail({
+    const mailOptions = {
       from: this.configService.get('EMAIL_FROM') || `"CMDA Conference" <${this.configService.get('SMTP_USER')}>`,
       to: email,
       subject: '✅ CMDA Conference 2026 - Registration Confirmed',
       html: htmlContent,
-      priority: 'high', // Mark as high priority
+      priority: 'high' as const, // Mark as high priority
       headers: {
         'X-Priority': '1', // Highest priority
         'X-MSMail-Priority': 'High',
@@ -138,7 +179,22 @@ export class EmailService {
           cid: 'qrcode',
         },
       ],
-    });
+    };
+
+    // Try primary transporter first, then fallback
+    try {
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`✅ Email sent successfully to ${email} via primary transport`);
+    } catch (primaryError) {
+      this.logger.warn(`⚠️ Primary transport failed for ${email}: ${primaryError.message}. Attempting fallback...`);
+      try {
+        await this.fallbackTransporter.sendMail(mailOptions);
+        this.logger.log(`✅ Email sent successfully to ${email} via Gmail fallback`);
+      } catch (fallbackError) {
+        this.logger.error(`❌ Both primary and fallback transports failed for ${email}:`, fallbackError.message);
+        throw new Error(`Failed to send email to ${email}: ${fallbackError.message}`);
+      }
+    }
   }
 
   async logEmail(

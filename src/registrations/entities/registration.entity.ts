@@ -33,6 +33,9 @@ export class Registration {
   chapter: string;
 
   @Column({ nullable: true })
+  state: string;
+
+  @Column({ nullable: true })
   currentLeadershipPost: string;
 
   @Column({ nullable: true })
