@@ -24,7 +24,7 @@ export class EmailService implements OnModuleInit {
         pass: this.configService.get('SMTP_PASS'),
       },
       tls: {
-        rejectUnauthorized: false, // Allow self-signed certificates
+        rejectUnauthorized: process.env.NODE_ENV === 'production',
       },
     };
 
@@ -174,14 +174,18 @@ export class EmailService implements OnModuleInit {
     const mailOptions = {
       from: this.configService.get('EMAIL_FROM') || `"CMDA Conference" <${this.configService.get('SMTP_USER')}>`,
       to: email,
-      subject: '✅ CMDA Conference 2026 - Registration Confirmed',
+      subject: 'CMDA Conference 2026 - Registration Confirmed',
       html: htmlContent,
       text: textContent,
       priority: 'high' as const, // Mark as high priority
       headers: {
-        'X-Priority': '1', // Highest priority
+        'X-Priority': '1',
         'X-MSMail-Priority': 'High',
         'Importance': 'high',
+        'List-Unsubscribe': `<mailto:unsubscribe@cmdanigeria.org>, <https://cmdanigeria.org/unsubscribe>`,
+        'Reply-To': this.configService.get('REPLY_TO') || 'conference@cmdanigeria.org',
+        'X-Mailer': 'CMDA-Conference-System',
+        'Message-ID': `<${Date.now()}.${Math.random().toString(36)}@cmdanigeria.org>`
       },
       attachments: [
         {
