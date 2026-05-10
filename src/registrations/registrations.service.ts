@@ -329,7 +329,7 @@ export class RegistrationsService {
   }
 
   private calculatePricing(category: string) {
-    const EARLY_REGISTRATION_DEADLINE = new Date('2026-05-18T23:59:59');
+    const EARLY_REGISTRATION_DEADLINE = new Date('2026-05-18T23:59:59+01:00');
     const LATE_FEE = 10000;
     const BASE_FEES = {
       student: 11000,
