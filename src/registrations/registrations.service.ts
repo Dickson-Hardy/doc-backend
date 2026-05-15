@@ -241,7 +241,10 @@ export class RegistrationsService {
   async findAllWithSpouses(): Promise<Registration[]> {
     return this.registrationsRepository
       .createQueryBuilder('registration')
-      .where('registration.category = :category', { category: 'doctor-with-spouse' })
+      .where(
+        '(registration.category = :category OR registration.spouseFirstName IS NOT NULL OR registration.spouseSurname IS NOT NULL OR registration.spouseEmail IS NOT NULL)',
+        { category: 'doctor-with-spouse' }
+      )
       .orderBy('registration.createdAt', 'DESC')
       .getMany();
   }
@@ -249,8 +252,13 @@ export class RegistrationsService {
   detectSpouseInconsistencies(registration: Registration): string[] {
     const inconsistencies: string[] = [];
 
-    if (registration.category !== 'doctor-with-spouse') {
+    const hasSpouseData = registration.spouseFirstName || registration.spouseSurname || registration.spouseEmail || registration.category === 'doctor-with-spouse';
+    if (!hasSpouseData) {
       return inconsistencies;
+    }
+
+    if (registration.category !== 'doctor-with-spouse') {
+      inconsistencies.push(`Category is "${registration.category}" but spouse details present — should be "doctor-with-spouse"`);
     }
 
     if (!registration.spouseFirstName || !registration.spouseSurname) {
@@ -281,8 +289,10 @@ export class RegistrationsService {
       }
     }
 
-    if (registration.totalAmount !== 85000 && registration.totalAmount !== 95000) {
-      inconsistencies.push(`Unexpected amount (₦${registration.totalAmount.toLocaleString()} instead of ₦85,000 or ₦95,000 with late fee)`);
+    if (registration.category === 'doctor-with-spouse' || registration.spouseFirstName || registration.spouseSurname || registration.spouseEmail) {
+      if (registration.totalAmount !== 85000 && registration.totalAmount !== 95000) {
+        inconsistencies.push(`Expected spouse rate ₦85,000 (or ₦95,000 with late fee) but charged ₦${registration.totalAmount.toLocaleString()}`);
+      }
     }
 
     return inconsistencies;
