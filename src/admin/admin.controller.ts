@@ -141,4 +141,13 @@ export class AdminController {
   async getPricingAudit() {
     return this.paymentService.auditPricing();
   }
+
+  @Post('fix-pricing/:registrationId')
+  async fixPricing(@Param('registrationId') registrationId: string) {
+    const updated = await this.registrationsService.fixPricing(registrationId);
+    return {
+      message: 'Pricing corrected successfully',
+      registration: updated,
+    };
+  }
 }

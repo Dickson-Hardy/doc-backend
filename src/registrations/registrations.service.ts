@@ -320,6 +320,23 @@ export class RegistrationsService {
     return this.registrationsRepository.save(registration);
   }
 
+  async fixPricing(registrationId: string): Promise<Registration> {
+    const registration = await this.registrationsRepository.findOne({
+      where: { id: registrationId },
+    });
+
+    if (!registration) {
+      throw new NotFoundException('Registration not found');
+    }
+
+    const pricing = this.calculatePricing(registration.category, registration.createdAt);
+    registration.baseFee = pricing.baseFee;
+    registration.lateFee = pricing.lateFee;
+    registration.totalAmount = pricing.total;
+
+    return this.registrationsRepository.save(registration);
+  }
+
   async getStats() {
     const total = await this.registrationsRepository.count();
     const paid = await this.registrationsRepository.count({
@@ -410,7 +427,7 @@ export class RegistrationsService {
     });
   }
 
-  private calculatePricing(category: string) {
+  private calculatePricing(category: string, registrationDate?: Date) {
     const EARLY_REGISTRATION_DEADLINE = new Date('2026-05-18T23:59:59+01:00');
     const LATE_FEE = 10000;
     const BASE_FEES = {
@@ -420,7 +437,8 @@ export class RegistrationsService {
       'doctor-with-spouse': 85000,
     };
 
-    const isLateRegistration = new Date() > EARLY_REGISTRATION_DEADLINE;
+    const refDate = registrationDate || new Date();
+    const isLateRegistration = refDate > EARLY_REGISTRATION_DEADLINE;
     let baseFee = 0;
 
     switch (category) {
