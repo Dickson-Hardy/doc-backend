@@ -238,6 +238,78 @@ export class RegistrationsService {
     return query.getMany();
   }
 
+  async findAllWithSpouses(): Promise<Registration[]> {
+    return this.registrationsRepository
+      .createQueryBuilder('registration')
+      .where('registration.category = :category', { category: 'doctor-with-spouse' })
+      .orderBy('registration.createdAt', 'DESC')
+      .getMany();
+  }
+
+  detectSpouseInconsistencies(registration: Registration): string[] {
+    const inconsistencies: string[] = [];
+
+    if (registration.category !== 'doctor-with-spouse') {
+      return inconsistencies;
+    }
+
+    if (!registration.spouseFirstName || !registration.spouseSurname) {
+      inconsistencies.push('Missing spouse name');
+    }
+
+    if (!registration.spouseEmail) {
+      inconsistencies.push('Missing spouse email');
+    }
+
+    if (registration.spouseEmail && registration.spouseEmail.toLowerCase() === registration.email.toLowerCase()) {
+      inconsistencies.push('Spouse email same as doctor email');
+    }
+
+    if (registration.sex === 'female' && registration.spouseFirstName) {
+      const spouseFirstLower = registration.spouseFirstName.toLowerCase();
+      const maleIndicators = ['mr ', 'mr. ', 'mister '];
+      if (maleIndicators.some(ind => spouseFirstLower.startsWith(ind))) {
+        inconsistencies.push('Female doctor with male-titled spouse - verify relationship');
+      }
+    }
+
+    if (registration.sex === 'male' && registration.spouseFirstName) {
+      const spouseFirstLower = registration.spouseFirstName.toLowerCase();
+      const femaleIndicators = ['mrs ', 'mrs. ', 'miss ', 'ms ', 'ms. '];
+      if (femaleIndicators.some(ind => spouseFirstLower.startsWith(ind))) {
+        inconsistencies.push('Male doctor with female-titled spouse - verify relationship');
+      }
+    }
+
+    if (registration.totalAmount !== 85000 && registration.totalAmount !== 95000) {
+      inconsistencies.push(`Unexpected amount (₦${registration.totalAmount.toLocaleString()} instead of ₦85,000 or ₦95,000 with late fee)`);
+    }
+
+    return inconsistencies;
+  }
+
+  async updateSpouseDetails(registrationId: string, updates: {
+    spouseFirstName?: string;
+    spouseSurname?: string;
+    spouseOtherNames?: string;
+    spouseEmail?: string;
+  }): Promise<Registration> {
+    const registration = await this.registrationsRepository.findOne({
+      where: { id: registrationId },
+    });
+
+    if (!registration) {
+      throw new NotFoundException('Registration not found');
+    }
+
+    if (updates.spouseFirstName !== undefined) registration.spouseFirstName = updates.spouseFirstName;
+    if (updates.spouseSurname !== undefined) registration.spouseSurname = updates.spouseSurname;
+    if (updates.spouseOtherNames !== undefined) registration.spouseOtherNames = updates.spouseOtherNames;
+    if (updates.spouseEmail !== undefined) registration.spouseEmail = updates.spouseEmail;
+
+    return this.registrationsRepository.save(registration);
+  }
+
   async getStats() {
     const total = await this.registrationsRepository.count();
     const paid = await this.registrationsRepository.count({

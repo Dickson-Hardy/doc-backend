@@ -97,4 +97,33 @@ export class AdminController {
       registrationId 
     };
   }
+
+  @Get('spouse-registrations')
+  async getSpouseRegistrations() {
+    const registrations = await this.registrationsService.findAllWithSpouses();
+    return registrations.map(reg => ({
+      ...reg,
+      inconsistencies: this.registrationsService.detectSpouseInconsistencies(reg),
+    }));
+  }
+
+  @Post('fix-spouse-details/:registrationId')
+  async fixSpouseDetails(
+    @Param('registrationId') registrationId: string,
+    @Body() updates: {
+      spouseFirstName?: string;
+      spouseSurname?: string;
+      spouseOtherNames?: string;
+      spouseEmail?: string;
+    },
+  ) {
+    const updated = await this.registrationsService.updateSpouseDetails(registrationId, updates);
+    return {
+      message: 'Spouse details updated successfully',
+      registration: {
+        ...updated,
+        inconsistencies: this.registrationsService.detectSpouseInconsistencies(updated),
+      },
+    };
+  }
 }
