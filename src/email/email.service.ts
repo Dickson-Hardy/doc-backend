@@ -193,7 +193,7 @@ export class EmailService implements OnModuleInit {
           content: qrCodeBuffer,
           contentType: 'image/png',
           cid: 'qrcode',
-          contentDisposition: 'inline',
+          contentDisposition: 'inline' as const,
         },
       ],
     };
