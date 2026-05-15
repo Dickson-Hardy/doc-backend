@@ -136,4 +136,9 @@ export class AdminController {
   async getPaymentAudit() {
     return this.paymentService.auditPayments();
   }
+
+  @Get('pricing-audit')
+  async getPricingAudit() {
+    return this.paymentService.auditPricing();
+  }
 }

@@ -109,6 +109,95 @@ export class PaymentService {
     return results;
   }
 
+  async auditPricing(): Promise<any[]> {
+    const registrations = await this.registrationsService.findAll({});
+    const secretKey = await this.getPaystackSecretKey();
+    const results: any[] = [];
+
+    for (const reg of registrations) {
+      if (!reg.paymentReference || reg.paymentStatus !== 'paid') {
+        continue;
+      }
+
+      const expectedPrice = this.calculateExpectedPrice(reg.category, reg.createdAt);
+      const pricingIssues: string[] = [];
+
+      if (Math.abs(reg.totalAmount - expectedPrice) > 0.01) {
+        pricingIssues.push(`Wrong price charged: ₦${reg.totalAmount.toLocaleString()} instead of expected ₦${expectedPrice.toLocaleString()} (${reg.category})`);
+      }
+
+      try {
+        const response = await axios.get(
+          `${this.paystackBaseUrl}/transaction/verify/${reg.paymentReference}`,
+          { headers: { Authorization: `Bearer ${secretKey}` } },
+        );
+
+        const paystackData = response.data.data;
+        const paystackAmount = paystackData.amount / 100;
+        const discrepancies: string[] = [...pricingIssues];
+
+        if (Math.abs(paystackAmount - expectedPrice) > 0.01) {
+          discrepancies.push(`Paystack charged ₦${paystackAmount.toLocaleString()} instead of expected ₦${expectedPrice.toLocaleString()}`);
+        }
+
+        if (Math.abs(paystackAmount - reg.totalAmount) > 0.01) {
+          discrepancies.push(`DB/Paystack mismatch: DB=₦${reg.totalAmount.toLocaleString()}, Paystack=₦${paystackAmount.toLocaleString()}`);
+        }
+
+        if (paystackData.status !== 'success') {
+          discrepancies.push(`Paystack status: ${paystackData.status}`);
+        }
+
+        results.push({
+          registrationId: reg.id,
+          name: `${reg.firstName} ${reg.surname}`,
+          email: reg.email,
+          category: reg.category,
+          expectedPrice,
+          dbAmount: reg.totalAmount,
+          paystackAmount,
+          paidAt: paystackData.paid_at,
+          createdAt: reg.createdAt,
+          discrepancies,
+          correctPrice: discrepancies.length === 0,
+        });
+      } catch (error) {
+        results.push({
+          registrationId: reg.id,
+          name: `${reg.firstName} ${reg.surname}`,
+          email: reg.email,
+          category: reg.category,
+          expectedPrice,
+          dbAmount: reg.totalAmount,
+          paystackAmount: null,
+          paidAt: null,
+          createdAt: reg.createdAt,
+          discrepancies: [...pricingIssues, `Paystack lookup failed: ${axios.isAxiosError(error) ? error.response?.data?.message || error.message : error.message}`],
+          correctPrice: false,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  private calculateExpectedPrice(category: string, createdAt: Date | string): number {
+    const EARLY_REGISTRATION_DEADLINE = new Date('2026-05-18T23:59:59+01:00');
+    const LATE_FEE = 10000;
+    const BASE_FEES: Record<string, number> = {
+      student: 11000,
+      'junior-doctor': 30000,
+      'senior-doctor': 50000,
+      'doctor-with-spouse': 85000,
+      doctor: 50000,
+    };
+
+    const regDate = createdAt instanceof Date ? createdAt : new Date(createdAt);
+    const isLate = regDate > EARLY_REGISTRATION_DEADLINE;
+    const baseFee = BASE_FEES[category] || BASE_FEES['junior-doctor'];
+    return baseFee + (isLate ? LATE_FEE : 0);
+  }
+
   private async getPaystackSecretKey(): Promise<string> {
     const dbKey = await this.settingsService.getPaystackSecretKey();
     return dbKey || this.configService.get<string>('PAYSTACK_SECRET_KEY') || '';
