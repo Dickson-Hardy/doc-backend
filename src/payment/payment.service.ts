@@ -15,10 +15,103 @@ export class PaymentService {
     private settingsService: SettingsService,
   ) {}
 
+  async testPaystackConnection(): Promise<{ success: boolean; message: string; keyType: string }> {
+    try {
+      const secretKey = await this.getPaystackSecretKey();
+
+      if (!secretKey) {
+        return { success: false, message: 'No Paystack secret key configured', keyType: 'none' };
+      }
+
+      const keyType = secretKey.startsWith('sk_live') ? 'live' : secretKey.startsWith('sk_test') ? 'test' : 'unknown';
+
+      const response = await axios.get(`${this.paystackBaseUrl}/transaction/totals`, {
+        headers: { Authorization: `Bearer ${secretKey}` },
+      });
+
+      if (response.data.status) {
+        return {
+          success: true,
+          message: `Connected to Paystack (${keyType} key)`,
+          keyType,
+        };
+      }
+
+      return { success: false, message: 'Paystack returned error', keyType };
+    } catch (error) {
+      const msg = axios.isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error.message;
+      return { success: false, message: msg, keyType: 'unknown' };
+    }
+  }
+
+  async auditPayments(): Promise<any[]> {
+    const registrations = await this.registrationsService.findAll({});
+    const secretKey = await this.getPaystackSecretKey();
+    const results: any[] = [];
+
+    for (const reg of registrations) {
+      if (!reg.paymentReference || reg.paymentStatus !== 'paid') {
+        continue;
+      }
+
+      try {
+        const response = await axios.get(
+          `${this.paystackBaseUrl}/transaction/verify/${reg.paymentReference}`,
+          { headers: { Authorization: `Bearer ${secretKey}` } },
+        );
+
+        const paystackData = response.data.data;
+        const paystackAmount = paystackData.amount / 100;
+        const discrepancies: string[] = [];
+
+        if (Math.abs(paystackAmount - reg.totalAmount) > 0.01) {
+          discrepancies.push(`Amount mismatch: DB=₦${reg.totalAmount.toLocaleString()}, Paystack=₦${paystackAmount.toLocaleString()}`);
+        }
+
+        if (paystackData.status !== 'success') {
+          discrepancies.push(`Paystack status: ${paystackData.status}`);
+        }
+
+        if (paystackData.customer?.email && paystackData.customer.email.toLowerCase() !== reg.email.toLowerCase()) {
+          discrepancies.push(`Email mismatch: DB=${reg.email}, Paystack=${paystackData.customer.email}`);
+        }
+
+        results.push({
+          registrationId: reg.id,
+          name: `${reg.firstName} ${reg.surname}`,
+          email: reg.email,
+          dbAmount: reg.totalAmount,
+          paystackAmount,
+          dbStatus: reg.paymentStatus,
+          paystackStatus: paystackData.status,
+          paidAt: paystackData.paid_at,
+          discrepancies,
+          healthy: discrepancies.length === 0,
+        });
+      } catch (error) {
+        results.push({
+          registrationId: reg.id,
+          name: `${reg.firstName} ${reg.surname}`,
+          email: reg.email,
+          dbAmount: reg.totalAmount,
+          paystackAmount: null,
+          dbStatus: reg.paymentStatus,
+          paystackStatus: 'not_found',
+          paidAt: null,
+          discrepancies: [`Paystack lookup failed: ${axios.isAxiosError(error) ? error.response?.data?.message || error.message : error.message}`],
+          healthy: false,
+        });
+      }
+    }
+
+    return results;
+  }
+
   private async getPaystackSecretKey(): Promise<string> {
-    // Try to get from database first, fallback to env
     const dbKey = await this.settingsService.getPaystackSecretKey();
-    return dbKey || this.configService.get<string>('PAYSTACK_SECRET_KEY');
+    return dbKey || this.configService.get<string>('PAYSTACK_SECRET_KEY') || '';
   }
 
   async verifyWebhookSignature(payload: string, signature: string): Promise<boolean> {

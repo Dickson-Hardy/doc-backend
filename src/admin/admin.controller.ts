@@ -126,4 +126,14 @@ export class AdminController {
       },
     };
   }
+
+  @Get('paystack-status')
+  async getPaystackStatus() {
+    return this.paymentService.testPaystackConnection();
+  }
+
+  @Get('payment-audit')
+  async getPaymentAudit() {
+    return this.paymentService.auditPayments();
+  }
 }
