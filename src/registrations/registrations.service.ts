@@ -45,7 +45,7 @@ export class RegistrationsService {
       console.log(`[REGISTRATION] User ${createRegistrationDto.email} has pending registration ${existingPendingRegistration.id}, creating new one`);
     }
 
-    // Find member by email from MongoDB
+    // Find member by email from Supabase/PostgreSQL
     const member = await this.membersService.findByEmail(createRegistrationDto.email);
     
     if (!member) {
@@ -57,7 +57,7 @@ export class RegistrationsService {
 
     const registration = this.registrationsRepository.create({
       ...createRegistrationDto,
-      memberMongoId: member['_id']?.toString() || '', // Store MongoDB ObjectId as string
+      memberId: member.id || '', // Store member UUID
       baseFee: pricing.baseFee,
       lateFee: pricing.lateFee,
       totalAmount: pricing.total,

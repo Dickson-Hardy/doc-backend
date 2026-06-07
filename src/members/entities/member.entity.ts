@@ -1,10 +1,11 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 
 @Entity('members')
 export class Member {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Index()
   @Column({ unique: true })
   email: string;
 
@@ -17,7 +18,7 @@ export class Member {
   @Column({ nullable: true })
   otherNames: string;
 
-  @Column()
+  @Column({ default: 25 })
   age: number;
 
   @Column()
@@ -29,6 +30,9 @@ export class Member {
   @Column()
   chapter: string;
 
+  @Column({ nullable: true })
+  state: string;
+
   @Column({ default: false })
   isCmdaMember: boolean;
 
@@ -39,13 +43,25 @@ export class Member {
   previousLeadershipPost: string;
 
   @Column()
-  category: string; // 'student' | 'doctor' | 'doctor-with-spouse'
+  category: string;
 
   @Column({ nullable: true })
   chapterOfGraduation: string;
 
   @Column({ nullable: true })
-  yearsInPractice: string; // 'less-than-5' | '5-and-above'
+  yearsInPractice: string;
+
+  @Column({ nullable: true })
+  membershipId: string;
+
+  @Column({ nullable: true })
+  licenseNumber: string;
+
+  @Column({ nullable: true })
+  specialty: string;
+
+  @Column({ nullable: true })
+  role: string;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -5,8 +5,11 @@ export class Registration {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  memberMongoId: string; // MongoDB ObjectId as string
+  @Column({ nullable: true })
+  memberMongoId: string; // Legacy MongoDB ObjectId as string (for migrated data)
+
+  @Column({ nullable: true })
+  memberId: string; // Supabase/TypeORM member UUID
 
   @Column()
   email: string;
