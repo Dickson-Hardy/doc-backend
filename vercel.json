@@ -1,8 +1,11 @@
 {
   "version": 2,
+  "buildCommand": "pnpm install && pnpm run build:vercel",
+  "installCommand": "pnpm install",
+  "outputDirectory": "dist",
   "builds": [
     {
-      "src": "api/index.ts",
+      "src": "dist/api/index.js",
       "use": "@vercel/node",
       "config": {
         "maxDuration": 30
@@ -12,7 +15,7 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "api/index.ts"
+      "dest": "dist/api/index.js"
     }
   ],
   "headers": [
