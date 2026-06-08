@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DatabaseModule } from './database/database.module';
 import { MembersModule } from './members/members.module';
@@ -20,7 +21,9 @@ import { SettingsModule } from './settings/settings.module';
     }),
     ScheduleModule.forRoot(),
     DatabaseModule,
-    // PostgreSQL (Supabase) - TypeORM for entity management
+    // MongoDB (Atlas) - for member lookups only
+    MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb+srv://cmdassociationnigeria:hAI6Os9uW2QE2zU8@cluster0.5nfcr.mongodb.net/live?retryWrites=true&w=majority'),
+    // PostgreSQL (Supabase) - TypeORM for all registration/admin data
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DATABASE_HOST,
