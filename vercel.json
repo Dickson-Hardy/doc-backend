@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "pnpm install && pnpm run build",
-  "installCommand": "pnpm install",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
   "builds": [
     {
       "src": "api/index.ts",

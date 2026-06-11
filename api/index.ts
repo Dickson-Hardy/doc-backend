@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { AppModule } from '../dist/app.module';
+import { AppModule } from '../src/app.module';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
 let app: any;
